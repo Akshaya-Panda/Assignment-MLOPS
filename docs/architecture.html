@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CardioRisk Architecture</title>
+<style>
+  :root { --ink:#1d2a33; --muted:#5c6b75; --arrow:#6b7a86; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink);
+         font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  #canvas { width: 1640px; padding: 26px 30px 18px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  .lane-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+                color: var(--muted); margin: 6px 0 8px; }
+  .row { display: flex; align-items: stretch; gap: 0; }
+  .zone { border: 2px dashed; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; }
+  .zone h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; }
+  .box { background: #fff; border: 1.6px solid; border-radius: 9px; padding: 8px 10px; font-size: 12.5px; line-height: 1.32; }
+  .box b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .box span { color: var(--muted); }
+  .down { text-align: center; color: var(--arrow); font-size: 18px; line-height: 18px; margin: 3px 0; }
+  .right { display: flex; align-items: center; justify-content: center; flex-direction: column;
+           color: var(--arrow); font-size: 28px; padding: 0 6px; min-width: 54px; }
+  .right small { font-size: 11px; line-height: 1.2; text-align: center; color: var(--muted); max-width: 90px; }
+  .pair { display: flex; gap: 8px; } .pair > .box { flex: 1; }
+  .ext { background: #f6f7f9 !important; border-color: #9aa5b1 !important; }
+  .data  { background:#eef8f6; border-color:#2a9d8f; } .data h2 {color:#1f7f74;}  .data .box {border-color:#2a9d8f;}
+  .train { background:#fdf5e8; border-color:#e9a23b; } .train h2{color:#a8690c;}  .train .box{border-color:#e9a23b;}
+  .ci    { background:#f0f2fc; border-color:#5a6fd6; } .ci h2   {color:#4256c2;}  .ci .box   {border-color:#5a6fd6;}
+  .k8s   { background:#fcefec; border-color:#e76f51; } .k8s h2  {color:#c04a2b;}  .k8s .box  {border-color:#e76f51;}
+  .mon   { background:#f4eff9; border-color:#8a63c9; } .mon h2  {color:#7148b5;}  .mon .box  {border-color:#8a63c9;}
+  .vlink { display: flex; justify-content: flex-end; color: var(--arrow); font-size: 13px; margin: 6px 0; }
+  .vlink div { width: 330px; text-align: center; }
+  .vlink b { display: block; font-size: 22px; line-height: 20px; }
+  .legend { color: var(--muted); font-size: 12px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div id="canvas">
+  <h1>CardioRisk: end-to-end MLOps architecture</h1>
+  <div class="sub">UCI Heart Disease classifier: reproducible training with MLflow, CI/CD on GitHub Actions, FastAPI on Kubernetes, Prometheus + Grafana monitoring</div>
+
+  <div class="lane-title">Build time</div>
+  <div class="row">
+    <div class="zone data" style="width:320px">
+      <h2>Data &amp; EDA</h2>
+      <div class="box ext"><b>UCI ML Repository</b><span>dataset #45 · processed.cleveland.data · 303 patients, 13 features</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>cardiorisk.data</b><span>download (zip fallback) · SHA-256 check · clean · validate · binarise target</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>heart_cleveland_clean.csv</b><span>versioned in Git; missing values kept for the pipeline</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>EDA notebook + figures</b><span>class balance · distributions · Spearman correlations · category risk</span></div>
+    </div>
+
+    <div class="right">→</div>
+
+    <div class="zone train" style="width:370px">
+      <h2>Training &amp; tracking</h2>
+      <div class="box"><b>sklearn Pipeline (one artefact)</b><span>ClinicalFeatureAdder (pct_max_hr, bp_stage) → impute → scale → one-hot → model</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>GridSearchCV · stratified 5-fold</b><span>Logistic Regression · Random Forest · Gradient Boosting · 64 candidates · selected on CV ROC-AUC</span></div>
+      <div class="down">↓</div>
+      <div class="pair">
+        <div class="box"><b>MLflow tracking</b><span>68 runs · params · metrics · plots · tables</span></div>
+        <div class="box"><b>Model Registry</b><span>cardiorisk-classifier @champion</span></div>
+      </div>
+      <div class="down">↓</div>
+      <div class="box"><b>model.joblib + model_card.json</b><span>raw JSON fields in → probability out</span></div>
+    </div>
+
+    <div class="right">→<small>git push to main</small></div>
+
+    <div class="zone ci" style="width:330px">
+      <h2>CI/CD · GitHub Actions</h2>
+      <div class="box"><b>1 · Lint</b><span>ruff check + format</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>2 · Test</b><span>dataset checksum · 58 pytest tests · coverage report</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>3 · Train</b><span>full tuning run · MLflow store + model uploaded as artifacts</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>4 · Image</b><span>docker build · container smoke test · publish (main only)</span></div>
+    </div>
+
+    <div class="right">→<small>only if every job passes</small></div>
+
+    <div class="zone ci" style="width:330px; background:#f6f7f9; border-color:#9aa5b1;">
+      <h2 style="color:#5c6b75">Container registry</h2>
+      <div class="box ext"><b>ghcr.io/akshaya-panda/assignment-mlops</b><span>tags :&lt;sha7&gt; and :latest · public · python:3.12-slim · non-root uid 10001 · HEALTHCHECK</span></div>
+    </div>
+  </div>
+
+  <div class="vlink" style="justify-content:flex-start; padding-left:760px;">
+    <div style="width:380px"><b>↓</b>Deployment pulls the published image (kubectl apply -k k8s/)</div>
+  </div>
+
+  <div class="lane-title">Run time</div>
+  <div class="row">
+    <div class="zone" style="width:250px; border-color:#9aa5b1; background:#fafbfc;">
+      <h2 style="color:#5c6b75">Clients</h2>
+      <div class="box ext"><b>curl · Swagger UI · apps</b><span>POST /predict, /predict/batch with JSON → prediction, probability, confidence, risk band</span></div>
+    </div>
+
+    <div class="right">→<small>HTTP :8000</small></div>
+
+    <div class="zone k8s" style="width:640px">
+      <h2>Kubernetes · namespace cardiorisk</h2>
+      <div class="pair">
+        <div class="box"><b>Service · LoadBalancer</b><span>:8000 → pods (localhost on Docker Desktop; external IP on AKS/EKS/GKE)</span></div>
+        <div class="box"><b>Headless Service</b><span>DNS returns every pod IP so each replica is scraped</span></div>
+      </div>
+      <div class="down">↓</div>
+      <div class="box"><b>Deployment cardiorisk-api · 2 replicas</b><span>rolling update (maxUnavailable 0) · startup/readiness/liveness probes · CPU/memory limits · PodDisruptionBudget · restricted Pod Security (non-root, read-only FS, no capabilities)</span></div>
+      <div class="down">↓</div>
+      <div class="pair">
+        <div class="box"><b>Pod 1 · FastAPI</b><span>/metrics · JSON logs</span></div>
+        <div class="box"><b>Pod 2 · FastAPI</b><span>/metrics · JSON logs</span></div>
+      </div>
+    </div>
+
+    <div class="right">←<small>scrape /metrics every 10 s</small></div>
+
+    <div class="zone mon" style="width:560px">
+      <h2>Monitoring · namespace monitoring</h2>
+      <div class="box"><b>Prometheus :9090</b><span>DNS service discovery · alert rules: replica down, model not loaded, 5xx ratio &gt; 5 %, p95 latency &gt; 500 ms, prediction drift vs 46 % training prevalence</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>Grafana :3001</b><span>provisioned data source + dashboard: replicas, request rate, error ratio, latency percentiles, risk bands, positive share, probability distribution</span></div>
+      <div class="down">↓</div>
+      <div class="box"><b>Structured logging</b><span>one JSON line per request (id, route, status, latency) and per prediction (label, probability); raw patient inputs are never logged</span></div>
+    </div>
+  </div>
+
+  <div class="legend">Grey boxes are external systems. Every component and configuration file is in the repository; the same manifests deploy to Docker Desktop, minikube or a managed cloud cluster.</div>
+</div>
+</body>
+</html>
