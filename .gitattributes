@@ -1,0 +1,5 @@
+# Store and check out text files with LF so shell scripts, the Dockerfile and YAML
+# behave identically on Windows, the Linux lab and GitHub Actions runners.
+* text=auto eol=lf
+*.png binary
+*.ipynb text eol=lf

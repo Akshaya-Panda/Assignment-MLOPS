@@ -1,0 +1,8 @@
+# Allow-list: send only what the serving image needs to the build context.
+*
+!requirements-serve.txt
+!cardiorisk/
+!app/
+!models/model.joblib
+!models/model_card.json
+**/__pycache__

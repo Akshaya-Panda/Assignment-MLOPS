@@ -1,0 +1,19 @@
+# Full development / training environment (Python 3.11 - 3.12).
+# Install with:  pip install -r requirements.txt
+-r requirements-serve.txt
+
+# Experiment tracking
+mlflow==3.17.1
+
+# EDA and reporting
+matplotlib==3.11.2
+seaborn==0.13.2
+nbformat==5.11.1
+nbconvert==7.17.2
+ipykernel==7.4.0
+
+# Testing and code quality
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx==0.28.1
+ruff==0.17.0

@@ -1,0 +1,2 @@
+# Optional: headless browser used only by tools/capture_screenshots.py
+playwright==1.64.0
