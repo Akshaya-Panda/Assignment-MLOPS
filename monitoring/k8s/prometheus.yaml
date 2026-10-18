@@ -1,0 +1,69 @@
+# Prometheus: scrapes every API replica and evaluates the alert rules.
+# Its config comes from the "prometheus-config" ConfigMap, created by scripts/k8s_deploy.sh
+# from monitoring/prometheus/*.yml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: cardiorisk}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: prometheus}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: cardiorisk}
+      annotations:
+        # Changing this value (done by the deploy script) restarts Prometheus to pick up config.
+        cardiorisk/config-hash: "initial"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.5.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=2d
+            - --web.enable-lifecycle
+          ports:
+            - {name: web, containerPort: 9090}
+          readinessProbe:
+            httpGet: {path: /-/ready, port: web}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /-/healthy, port: web}
+            periodSeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus}
+            - {name: data, mountPath: /prometheus}
+      volumes:
+        - name: config
+          configMap: {name: prometheus-config}
+        - name: data
+          emptyDir: {sizeLimit: 1Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels: {app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: cardiorisk}
+spec:
+  type: LoadBalancer
+  selector: {app.kubernetes.io/name: prometheus}
+  ports:
+    - {name: web, port: 9090, targetPort: web}

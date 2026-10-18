@@ -27,7 +27,7 @@ defaults:
 jobs:
   lint:
     name: Lint (ruff)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26.04 on 2026-10-19
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -42,7 +42,7 @@ jobs:
   test:
     name: Unit tests (pytest)
     needs: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26.04 on 2026-10-19
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -74,7 +74,7 @@ jobs:
   train:
     name: Train & track (MLflow)
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26.04 on 2026-10-19
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -113,7 +113,7 @@ jobs:
   docker:
     name: Build, smoke-test & publish image
     needs: train
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moves to 26.04 on 2026-10-19
     permissions:
       contents: read
       packages: write  # push to GitHub Container Registry (only on main, see below)

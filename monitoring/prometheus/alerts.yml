@@ -1,0 +1,54 @@
+groups:
+  - name: cardiorisk-api
+    rules:
+      - alert: CardioRiskReplicaDown
+        expr: up{job="cardiorisk-api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "API replica {{ $labels.instance }} is not responding to scrapes"
+
+      - alert: CardioRiskModelNotLoaded
+        expr: cardiorisk_model_loaded == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Replica {{ $labels.instance }} is running without a model"
+
+      - alert: CardioRiskHighServerErrorRate
+        expr: |
+          sum(rate(cardiorisk_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(cardiorisk_http_requests_total[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 5% of requests are failing with 5xx"
+
+      - alert: CardioRiskSlowPredictions
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(cardiorisk_http_request_duration_seconds_bucket{route="/predict"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "p95 /predict latency is above 500 ms"
+
+      # Simple drift signal: training prevalence was 46%; a sustained shift in the share of
+      # positive predictions suggests the incoming population or the inputs have changed.
+      - alert: CardioRiskPredictionDrift
+        expr: |
+          (
+            sum(rate(cardiorisk_predictions_total{label="heart_disease"}[30m]))
+              / clamp_min(sum(rate(cardiorisk_predictions_total[30m])), 1e-9)
+            > 0.75
+          or
+            sum(rate(cardiorisk_predictions_total{label="heart_disease"}[30m]))
+              / clamp_min(sum(rate(cardiorisk_predictions_total[30m])), 1e-9)
+            < 0.20
+          )
+          and sum(increase(cardiorisk_predictions_total[30m])) > 50
+        for: 15m
+        labels: {severity: info}
+        annotations:
+          summary: "Positive prediction share moved far from the 46% training prevalence"

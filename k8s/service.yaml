@@ -1,0 +1,37 @@
+# Public entry point. Docker Desktop publishes LoadBalancer services on localhost;
+# on a cloud cluster (AKS/EKS/GKE) the provider allocates an external IP instead.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cardiorisk-api
+  namespace: cardiorisk
+  labels:
+    app.kubernetes.io/name: cardiorisk-api
+    app.kubernetes.io/part-of: cardiorisk
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: cardiorisk-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+# Headless service: DNS returns every pod IP, so Prometheus scrapes each replica
+# individually (metrics live in each process) without needing Kubernetes API access.
+apiVersion: v1
+kind: Service
+metadata:
+  name: cardiorisk-api-headless
+  namespace: cardiorisk
+  labels:
+    app.kubernetes.io/name: cardiorisk-api
+    app.kubernetes.io/part-of: cardiorisk
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: cardiorisk-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

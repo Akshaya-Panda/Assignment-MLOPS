@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cardiorisk
+  labels:
+    app.kubernetes.io/part-of: cardiorisk
+    # Enforce the restricted Pod Security Standard for everything in this namespace.
+    pod-security.kubernetes.io/enforce: restricted

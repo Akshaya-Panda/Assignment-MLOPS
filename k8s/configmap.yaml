@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cardiorisk-api-config
+  namespace: cardiorisk
+  labels:
+    app.kubernetes.io/name: cardiorisk-api
+    app.kubernetes.io/part-of: cardiorisk
+data:
+  LOG_LEVEL: "INFO"
+  MODEL_PATH: "/app/models/model.joblib"

@@ -187,8 +187,67 @@ def api_pages(base: str) -> list[Page]:
     ]
 
 
+# --- Monitoring: Grafana and Prometheus ---------------------------------------
+
+
+def grafana_pages(base: str) -> list[Page]:
+    _expect(f"{base}/api/health", "database", "Grafana")
+    dash = f"{base}/d/cardiorisk-api/?orgId=1&from=now-15m&to=now&refresh="
+    return [
+        Page("grafana_01_dashboard.png", dash, height=1720),
+        Page("grafana_02_dashboard_kiosk.png", f"{dash}&kiosk", height=1560),
+    ]
+
+
+def prometheus_pages(base: str) -> list[Page]:
+    _expect(f"{base}/-/ready", "Ready", "Prometheus")
+    query = urllib.parse.quote(
+        "sum by (route, status) "
+        '(rate(cardiorisk_http_requests_total{route!~"/metrics|/health|/ready"}[1m]))'
+    )
+    return [
+        Page("prometheus_01_targets.png", f"{base}/targets"),
+        Page("prometheus_02_alert_rules.png", f"{base}/alerts", height=1200),
+        Page(
+            "prometheus_03_request_rate_query.png",
+            f"{base}/query?g0.expr={query}&g0.tab=graph&g0.range_input=15m",
+        ),
+    ]
+
+
+# --- GitHub (public repository: no login needed) ------------------------------
+
+
+def github_pages(base: str) -> list[Page]:
+    """base = https://github.com/<owner>/<repo>; uses the public REST API for run ids."""
+    owner_repo = base.removeprefix("https://github.com/").strip("/")
+    api = f"https://api.github.com/repos/{owner_repo}"
+    with urllib.request.urlopen(f"{api}/actions/runs?per_page=1&branch=main", timeout=20) as r:
+        run = json.load(r)["workflow_runs"][0]
+    with urllib.request.urlopen(f"{api}/actions/runs/{run['id']}/jobs", timeout=20) as r:
+        jobs = json.load(r)["jobs"]
+    pages = [
+        Page("github_01_actions_history.png", f"{base}/actions"),
+        Page("github_02_pipeline_run.png", run["html_url"], height=1300),
+    ]
+    for i, job in enumerate(jobs, start=3):
+        slug = job["name"].split(" (")[0].lower().replace(" & ", "_").replace(", ", "_")
+        slug = slug.replace(" ", "_")
+        pages.append(Page(f"github_{i:02d}_job_{slug}.png", job["html_url"], height=1400))
+    package = owner_repo.split("/")[1].lower()
+    pages.append(
+        Page(
+            f"github_{len(pages) + 1:02d}_container_package.png", f"{base}/pkgs/container/{package}"
+        )
+    )
+    return pages
+
+
 TARGETS = {
     "api": Target(api_pages, "http://127.0.0.1:8000"),
+    "grafana": Target(grafana_pages, "http://127.0.0.1:3001"),
+    "prometheus": Target(prometheus_pages, "http://127.0.0.1:9090"),
+    "github": Target(github_pages, "https://github.com/Akshaya-Panda/Assignment-MLOPS"),
     "mlflow": Target(
         mlflow_pages,
         "http://127.0.0.1:5000",
