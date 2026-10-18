@@ -111,9 +111,12 @@ jobs:
           retention-days: 14
 
   docker:
-    name: Build & smoke-test image
+    name: Build, smoke-test & publish image
     needs: train
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # push to GitHub Container Registry (only on main, see below)
     steps:
       - uses: actions/checkout@v7
       - name: Download trained model
@@ -122,7 +125,11 @@ jobs:
           name: model-and-reports
           path: .
       - name: Build image
-        run: docker build -t "$IMAGE:${GITHUB_SHA::7}" -t "$IMAGE:latest" . 2>&1 | tee docker-build.log
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "$IMAGE:${GITHUB_SHA::7}" -t "$IMAGE:latest" . 2>&1 | tee docker-build.log
       - name: Run container
         run: docker run -d --name api -p 8000:8000 "$IMAGE:latest"
       - name: Smoke test (/health, /ready, /predict, 422 validation, /metrics)
@@ -141,3 +148,16 @@ jobs:
           path: |
             docker-build.log
             container.log
+      # Continuous delivery: only an image that passed every job above is published.
+      - name: Publish to ghcr.io (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          target="ghcr.io/${GITHUB_REPOSITORY,,}"  # registry paths must be lowercase
+          echo "${REGISTRY_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          for tag in "${GITHUB_SHA::7}" latest; do
+            docker tag "$IMAGE:latest" "${target}:${tag}"
+            docker push "${target}:${tag}"
+          done
+          echo "Published \`${target}:${GITHUB_SHA::7}\` and \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
